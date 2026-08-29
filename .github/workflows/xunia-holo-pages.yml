@@ -9,48 +9,43 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: xunia-holo-pages
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout HOLO only
+      - name: Checkout master
         uses: actions/checkout@v4
         with:
-          sparse-checkout: |
-            xunia_holo
-          sparse-checkout-cone-mode: false
+          fetch-depth: 0
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Assemble standalone site
+      - name: Validate HOLO
         run: |
           set -euo pipefail
-          rm -rf _site
-          mkdir -p _site
-          cp xunia_holo/index.html _site/index.html
-          touch _site/.nojekyll
-          test -s _site/index.html
-          grep -q 'XUNIA // HOLO BATTLESPACE' _site/index.html
-          grep -q 'three@0.160.0/build/three.module.js' _site/index.html
-          grep -q 'OrbitControls.js' _site/index.html
+          test -s xunia_holo/index.html
+          grep -q 'XUNIA // HOLO BATTLESPACE' xunia_holo/index.html
+          grep -q 'three@0.160.0/build/three.module.js' xunia_holo/index.html
+          grep -q 'OrbitControls.js' xunia_holo/index.html
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: _site
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Publish root site to gh-pages
+        run: |
+          set -euo pipefail
+          cp xunia_holo/index.html /tmp/xunia-holo-index.html
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin gh-pages
+          git switch gh-pages
+          cp /tmp/xunia-holo-index.html index.html
+          touch .nojekyll
+          git add index.html .nojekyll
+          if git diff --cached --quiet; then
+            echo 'HOLO Pages content already current.'
+          else
+            git commit -m 'Deploy XUNIA HOLO live site'
+            git push origin gh-pages
+          fi
