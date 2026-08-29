@@ -19,8 +19,14 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout HOLO only
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          sparse-checkout: |
+            xunia_holo
+            .github/workflows/xunia-holo-battlefield.yml
+          sparse-checkout-cone-mode: false
 
       - name: Validate single-file contract
         run: |
